@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Protein Tracker</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#E8834A">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Protein Tracker">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --orange:#E8834A;
+  --orange-light:rgba(232,131,74,0.15);
+  --bg:#F2EAE0;
+  --card:#ffffff;
+  --text:#1a1a1a;
+  --muted:#888;
+  --border:rgba(0,0,0,0.08);
+  --tab-h:56px;
+}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+
+/* ── Screens ── */
+.screen{
+  position:fixed;top:0;left:0;right:0;
+  bottom:calc(var(--tab-h) + env(safe-area-inset-bottom));
+  overflow-y:auto;overflow-x:hidden;
+  padding:16px 16px 28px;
+  display:none;
+  -webkit-overflow-scrolling:touch;
+}
+.screen.active{display:block}
+
+/* ── Tab bar ── */
+.tab-bar{
+  position:fixed;bottom:0;left:0;right:0;
+  height:calc(var(--tab-h) + env(safe-area-inset-bottom));
+  padding-bottom:env(safe-area-inset-bottom);
+  background:#fff;border-top:1px solid var(--border);
+  display:flex;z-index:100;
+}
+.tab-btn{
+  flex:1;background:none;border:none;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;font-size:10px;color:var(--muted);cursor:pointer;transition:color .2s;
+}
+.tab-btn.active{color:var(--orange)}
+.tab-btn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── Page header ── */
+.page-hdr{padding-top:8px;margin-bottom:16px}
+.page-hdr h1{font-size:26px;font-weight:700}
+.page-hdr p{font-size:13px;margin-top:2px}
+
+/* ── Cards ── */
+.card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px}
+.card-lbl{font-size:11px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:5px;margin-bottom:8px}
+.card-lbl svg{width:14px;height:14px;flex-shrink:0}
+
+/* ── Dashboard top row ── */
+.dash-top{display:flex;gap:12px;margin-bottom:12px}
+.progress-card{flex:0 0 auto;width:168px;display:flex;flex-direction:column}
+.ring-wrap{display:flex;justify-content:center;padding:4px 0}
+.ring-svg{width:128px;height:128px}
+
+.stats-right{flex:1;display:flex;flex-direction:column;gap:8px}
+.mini-stat{background:var(--card);border-radius:10px;padding:10px 12px;flex:1;display:flex;flex-direction:column;justify-content:center}
+.mini-icon{width:22px;height:22px;background:var(--orange-light);border-radius:6px;display:flex;align-items:center;justify-content:center;margin-bottom:4px;flex-shrink:0}
+.mini-icon svg{width:12px;height:12px;stroke:var(--orange);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.mini-lbl{font-size:10px;color:var(--muted)}
+.mini-val{font-size:16px;font-weight:700}
+
+/* ── Chart ── */
+.chart-wrap{position:relative;cursor:pointer}
+.chart-hint{font-size:11px;color:var(--muted);text-align:center;margin-top:8px}
+
+/* ── FAB ── */
+.fab{
+  position:fixed;right:20px;
+  bottom:calc(var(--tab-h) + env(safe-area-inset-bottom) + 16px);
+  width:56px;height:56px;border-radius:50%;
+  background:var(--orange);color:#fff;border:none;
+  font-size:26px;cursor:pointer;
+  box-shadow:0 4px 18px rgba(232,131,74,.45);
+  z-index:90;display:flex;align-items:center;justify-content:center;
+  transition:transform .15s;
+}
+.fab:active{transform:scale(.93)}
+
+/* ── Modals ── */
+.overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.4);
+  z-index:200;display:none;align-items:flex-end;
+}
+.overlay.open{display:flex}
+.sheet{
+  background:var(--bg);border-radius:20px 20px 0 0;
+  padding:20px 20px calc(20px + env(safe-area-inset-bottom));
+  width:100%;max-height:88vh;overflow-y:auto;
+  animation:slideUp .28s ease;
+}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+
+.sheet-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+.sheet-title{font-size:20px;font-weight:700}
+.sheet-sub{font-size:13px;color:var(--muted);margin-top:2px}
+.close-btn{width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.08);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.close-btn svg{width:12px;height:12px;stroke:#666;stroke-width:2.5;fill:none}
+
+/* ── Stepper ── */
+.stepper{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:16px}
+.step-btn{width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.08);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text)}
+.step-btn svg{width:18px;height:18px;stroke:currentColor;stroke-width:2.5;fill:none}
+.step-val{font-size:42px;font-weight:700;min-width:70px;text-align:center}
+.step-unit{font-size:18px;color:var(--muted);align-self:flex-end;padding-bottom:8px}
+
+/* ── Quick-add grid ── */
+.quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+.quick-btn{padding:10px 0;background:rgba(0,0,0,.06);border:none;border-radius:10px;font-size:14px;cursor:pointer;color:var(--text);font-family:inherit}
+.quick-btn:active{background:rgba(0,0,0,.12)}
+
+/* ── Fields ── */
+.field-lbl{font-size:13px;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.field-lbl svg{width:13px;height:13px;stroke:currentColor;stroke-width:1.8;fill:none}
+.txt-input{width:100%;padding:12px;background:rgba(0,0,0,.06);border:none;border-radius:10px;font-size:14px;outline:none;color:var(--text);font-family:inherit;margin-bottom:16px}
+.txt-input::placeholder{color:var(--muted)}
+
+/* ── Primary button ── */
+.btn-primary{
+  width:100%;padding:15px;background:var(--orange);color:#fff;
+  border:none;border-radius:12px;font-size:16px;font-weight:600;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:opacity .15s;font-family:inherit;
+}
+.btn-primary:disabled{background:rgba(0,0,0,.18);cursor:default}
+
+/* ── Period picker ── */
+.period-picker{display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px}
+.period-picker::-webkit-scrollbar{display:none}
+.period-btn{
+  padding:8px 16px;border-radius:20px;
+  border:1px solid rgba(0,0,0,.12);background:var(--card);
+  font-size:14px;cursor:pointer;white-space:nowrap;color:var(--text);
+  transition:all .15s;font-family:inherit;
+}
+.period-btn.active{background:var(--orange);color:#fff;border-color:var(--orange)}
+
+/* ── History stats grid ── */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat-card{background:var(--card);border-radius:12px;padding:12px}
+.stat-icon{width:24px;height:24px;background:var(--orange-light);border-radius:6px;display:flex;align-items:center;justify-content:center;margin-bottom:6px}
+.stat-icon svg{width:12px;height:12px;stroke:var(--orange);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.stat-lbl{font-size:11px;color:var(--muted);margin-bottom:2px}
+.stat-val{font-size:18px;font-weight:700}
+
+/* ── Settings ── */
+.settings-card{background:var(--card);border-radius:14px;padding:16px}
+.settings-hdr{display:flex;align-items:flex-start;gap:10px;margin-bottom:16px}
+.settings-icon{width:32px;height:32px;background:var(--orange-light);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.settings-icon svg{width:16px;height:16px;stroke:var(--orange);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.settings-hdr-text h3{font-size:16px;font-weight:600}
+.settings-hdr-text p{font-size:12px;color:var(--muted);margin-top:2px}
+.field-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.goal-input{
+  flex:1;padding:12px;background:#f5f5f5;
+  border:1px solid rgba(0,0,0,.12);border-radius:10px;
+  font-size:16px;outline:none;color:var(--text);font-family:inherit;
+}
+.unit-lbl{font-size:14px;color:var(--muted)}
+.presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.preset-btn{
+  padding:8px 14px;border-radius:10px;
+  border:1px solid rgba(0,0,0,.12);background:#fff;
+  font-size:14px;cursor:pointer;color:var(--text);
+  transition:all .15s;font-family:inherit;
+}
+.preset-btn.active{background:var(--orange);color:#fff;border-color:var(--orange)}
+
+/* ── Day entries sheet ── */
+.entry-list{list-style:none}
+.entry-item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.entry-item:last-child{border-bottom:none}
+.entry-amount{font-size:16px;font-weight:700;color:var(--orange)}
+.entry-desc{font-size:12px;color:var(--muted);margin-top:2px}
+.entry-right{display:flex;align-items:center;gap:8px}
+.entry-time{font-size:12px;color:var(--muted)}
+.entry-del{background:none;border:none;color:#ff453a;cursor:pointer;font-size:13px;padding:4px 6px;font-family:inherit}
+.empty-state{text-align:center;padding:40px 0;color:var(--muted)}
+.day-total-lbl{font-size:13px;color:var(--orange);margin-top:2px}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     DASHBOARD
+════════════════════════════════════════════ -->
+<div class="screen active" id="screen-dashboard">
+  <div class="page-hdr">
+    <h1>Dashboard</h1>
+    <p style="color:var(--orange)">Track your daily protein intake at a glance</p>
+  </div>
+
+  <div class="dash-top">
+    <!-- Progress ring card -->
+    <div class="card progress-card">
+      <div class="card-lbl">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="3" x2="12" y2="1"/></svg>
+        Today's Progress
+      </div>
+      <div class="ring-wrap">
+        <svg class="ring-svg" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="#e5e5e5" stroke-width="12"/>
+          <circle cx="60" cy="60" r="52" fill="none" stroke="#E8834A" stroke-width="12"
+            stroke-linecap="round"
+            stroke-dasharray="326.73" stroke-dashoffset="326.73"
+            transform="rotate(-90 60 60)" id="ring-progress"/>
+          <text x="60" y="52" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="22" font-weight="700" fill="#1a1a1a" id="ring-val">0g</text>
+          <text x="60" y="66" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="10" fill="#888" id="ring-goal-lbl">of 160g goal</text>
+          <text x="60" y="80" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" font-weight="600" fill="#E8834A" id="ring-pct">0%</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Right stat cards -->
+    <div class="stats-right">
+      <div class="mini-stat">
+        <div class="mini-icon">
+          <svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        </div>
+        <div class="mini-lbl">7-Day Average</div>
+        <div class="mini-val" id="stat-avg">0g</div>
+      </div>
+      <div class="mini-stat">
+        <div class="mini-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
+        </div>
+        <div class="mini-lbl">Daily Goal</div>
+        <div class="mini-val" id="stat-goal">160g</div>
+      </div>
+      <div class="mini-stat">
+        <div class="mini-icon">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div class="mini-lbl">Remaining Today</div>
+        <div class="mini-val" id="stat-remaining">160g</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Last 7 days chart -->
+  <div class="card">
+    <div class="card-lbl">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Last 7 Days
+    </div>
+    <div class="chart-wrap" style="height:155px">
+      <canvas id="dash-chart"></canvas>
+    </div>
+    <div class="chart-hint">Tap a bar to view &amp; edit entries</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     HISTORY
+════════════════════════════════════════════ -->
+<div class="screen" id="screen-history">
+  <div class="page-hdr">
+    <h1>History</h1>
+    <p style="color:var(--muted)">View your protein intake over time</p>
+  </div>
+
+  <div class="period-picker">
+    <button class="period-btn active" data-period="14">14 days</button>
+    <button class="period-btn" data-period="21">21 days</button>
+    <button class="period-btn" data-period="28">28 days</button>
+    <button class="period-btn" data-period="30">30 days</button>
+  </div>
+
+  <div class="card">
+    <div class="card-lbl" id="hist-chart-lbl">
+      <svg viewBox="0 0 24 24" style="stroke:currentColor;fill:none;stroke-width:1.8"><rect x="2" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="18" y="13" width="4" height="8"/></svg>
+      Last 14 Days
+    </div>
+    <div class="chart-wrap" style="height:195px">
+      <canvas id="history-chart"></canvas>
+    </div>
+    <div class="chart-hint">Tap a bar to view &amp; edit entries for that day</div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon">
+        <svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
+      </div>
+      <div class="stat-lbl">Average</div>
+      <div class="stat-val" id="hist-avg">0g</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/><path d="M6 20h12"/></svg>
+      </div>
+      <div class="stat-lbl">Best Day</div>
+      <div class="stat-val" id="hist-best">0g</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      </div>
+      <div class="stat-lbl">Days at Goal</div>
+      <div class="stat-val" id="hist-days">0/0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      </div>
+      <div class="stat-lbl">Total</div>
+      <div class="stat-val" id="hist-total">0g</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SETTINGS
+════════════════════════════════════════════ -->
+<div class="screen" id="screen-settings">
+  <div class="page-hdr" style="display:flex;align-items:center;gap:10px">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#E8834A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    <div>
+      <h1>Settings</h1>
+      <p style="color:var(--muted);font-size:13px;margin-top:2px">Customize your tracking preferences</p>
+    </div>
+  </div>
+
+  <div class="settings-card">
+    <div class="settings-hdr">
+      <div class="settings-icon">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
+      </div>
+      <div class="settings-hdr-text">
+        <h3>Daily Protein Goal</h3>
+        <p>Set your daily protein intake target in grams</p>
+      </div>
+    </div>
+
+    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px">Goal (grams)</label>
+    <div class="field-row">
+      <input class="goal-input" type="number" inputmode="numeric" id="goal-input" value="160" min="1" max="999">
+      <span class="unit-lbl">g</span>
+    </div>
+
+    <div class="presets" id="presets">
+      <button class="preset-btn" data-val="100">100g</button>
+      <button class="preset-btn" data-val="120">120g</button>
+      <button class="preset-btn" data-val="140">140g</button>
+      <button class="preset-btn active" data-val="160">160g</button>
+      <button class="preset-btn" data-val="180">180g</button>
+      <button class="preset-btn" data-val="200">200g</button>
+    </div>
+
+    <button class="btn-primary" id="save-goal-btn" onclick="saveGoal()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Save Goal
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     ADD PROTEIN MODAL
+════════════════════════════════════════════ -->
+<div class="overlay" id="add-overlay" onclick="overlayClose(event,'add-overlay')">
+  <div class="sheet">
+    <div class="sheet-hdr">
+      <div>
+        <div class="sheet-title">Add Protein</div>
+        <div class="sheet-sub">Log your protein intake</div>
+      </div>
+      <button class="close-btn" onclick="closeOverlay('add-overlay')">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="stepper">
+      <button class="step-btn" onclick="adjustAmount(-1)">
+        <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <span class="step-val" id="add-amount">0</span>
+      <span class="step-unit">g</span>
+      <button class="step-btn" onclick="adjustAmount(1)">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+
+    <div class="quick-grid">
+      <button class="quick-btn" onclick="quickAdd(5)">+5g</button>
+      <button class="quick-btn" onclick="quickAdd(10)">+10g</button>
+      <button class="quick-btn" onclick="quickAdd(15)">+15g</button>
+      <button class="quick-btn" onclick="quickAdd(20)">+20g</button>
+      <button class="quick-btn" onclick="quickAdd(25)">+25g</button>
+      <button class="quick-btn" onclick="quickAdd(30)">+30g</button>
+      <button class="quick-btn" onclick="quickAdd(40)">+40g</button>
+      <button class="quick-btn" onclick="quickAdd(50)">+50g</button>
+    </div>
+
+    <div class="field-lbl">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Description (optional)
+    </div>
+    <input class="txt-input" type="text" id="add-desc" placeholder="e.g. Chicken breast, Protein shake...">
+
+    <button class="btn-primary" id="add-btn" onclick="addEntry()" disabled>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Entry
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     DAY ENTRIES MODAL
+════════════════════════════════════════════ -->
+<div class="overlay" id="day-overlay" onclick="overlayClose(event,'day-overlay')">
+  <div class="sheet">
+    <div class="sheet-hdr">
+      <div>
+        <div class="sheet-title" id="day-date-lbl">—</div>
+        <div class="day-total-lbl" id="day-total-lbl">Total: 0g protein</div>
+      </div>
+      <button class="close-btn" onclick="closeDayModal()">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <ul class="entry-list" id="day-entries-list"></ul>
+  </div>
+</div>
+
+<!-- Tab bar -->
+<nav class="tab-bar">
+  <button class="tab-btn active" data-tab="dashboard">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Dashboard
+  </button>
+  <button class="tab-btn" data-tab="history">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    History
+  </button>
+  <button class="tab-btn" data-tab="settings">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Settings
+  </button>
+</nav>
+
+<!-- FAB -->
+<button class="fab" id="fab" onclick="openAddModal()">+</button>
+
+<script>
+Chart.register(ChartDataLabels);
+
+// ─── State ────────────────────────────────────────
+const CIRC = 2 * Math.PI * 52; // SVG ring circumference (r=52)
+const state = {
+  entries: JSON.parse(localStorage.getItem('pt_entries') || '[]'),
+  goal: parseInt(localStorage.getItem('pt_goal') || '160'),
+  period: 14,
+  addAmount: 0,
+};
+let dashChart = null;
+let histChart  = null;
+let selectedDate = null;
+
+// ─── Persistence ─────────────────────────────────
+function persist() {
+  localStorage.setItem('pt_entries', JSON.stringify(state.entries));
+}
+
+// ─── Date helpers ─────────────────────────────────
+function startOfDay(d) {
+  const r = new Date(d); r.setHours(0,0,0,0); return r;
+}
+function getDayTotal(d) {
+  const s = startOfDay(d).getTime(), e = s + 86400000;
+  return state.entries
+    .filter(x => { const t = new Date(x.timestamp).getTime(); return t >= s && t < e; })
+    .reduce((a, x) => a + x.amount, 0);
+}
+function buildDays(n) {
+  return Array.from({length: n}, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (n - 1 - i));
+    d.setHours(0,0,0,0);
+    return { date: d, total: getDayTotal(d) };
+  });
+}
+
+// ─── Dashboard ────────────────────────────────────
+function renderDashboard() {
+  const today = getDayTotal(new Date());
+  const progress = state.goal > 0 ? today / state.goal : 0;
+  const pct = Math.min(Math.round(progress * 100), 100);
+
+  // Ring
+  document.getElementById('ring-progress').style.strokeDashoffset = CIRC * (1 - Math.min(progress, 1));
+  document.getElementById('ring-val').textContent = today + 'g';
+  document.getElementById('ring-goal-lbl').textContent = 'of ' + state.goal + 'g goal';
+  document.getElementById('ring-pct').textContent = pct + '%';
+
+  // Stat cards
+  const days7 = buildDays(7);
+  const nonZ7 = days7.filter(d => d.total > 0);
+  const avg7  = nonZ7.length ? Math.round(nonZ7.reduce((a,d)=>a+d.total,0) / nonZ7.length) : 0;
+  document.getElementById('stat-avg').textContent       = avg7 + 'g';
+  document.getElementById('stat-goal').textContent      = state.goal + 'g';
+  document.getElementById('stat-remaining').textContent = Math.max(0, state.goal - today) + 'g';
+
+  // Chart
+  const labels = days7.map(d => d.date.toLocaleDateString('en-US',{weekday:'narrow'}));
+  const vals   = days7.map(d => d.total);
+  renderBarChart('dash-chart', labels, vals, 155, true, (i) => openDayModal(days7[i].date));
+}
+
+// ─── History ──────────────────────────────────────
+function renderHistory() {
+  const days = buildDays(state.period);
+  const nonZ = days.filter(d => d.total > 0);
+  const avg  = nonZ.length ? Math.round(nonZ.reduce((a,d)=>a+d.total,0)/nonZ.length) : 0;
+  const best = Math.max(0, ...days.map(d => d.total));
+  const atG  = days.filter(d => d.total >= state.goal).length;
+  const tot  = days.reduce((a,d)=>a+d.total,0);
+
+  document.getElementById('hist-chart-lbl').innerHTML =
+    '<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8"><rect x="2" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="18" y="13" width="4" height="8"/></svg> Last ' + state.period + ' Days';
+  document.getElementById('hist-avg').textContent   = avg + 'g';
+  document.getElementById('hist-best').textContent  = best + 'g';
+  document.getElementById('hist-days').textContent  = atG + '/' + nonZ.length;
+  document.getElementById('hist-total').textContent = tot + 'g';
+
+  const labels = days.map(d => d.date.getDate().toString());
+  const vals   = days.map(d => d.total);
+  renderBarChart('history-chart', labels, vals, 195, false, (i) => openDayModal(days[i].date));
+}
+
+// ─── Shared bar chart renderer ────────────────────
+function renderBarChart(canvasId, labels, vals, height, isDash, onClickBar) {
+  const el = document.getElementById(canvasId);
+  const existing = isDash ? dashChart : histChart;
+  if (existing) existing.destroy();
+
+  const chart = new Chart(el.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: vals,
+        backgroundColor: '#E8834A',
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    plugins: [ChartDataLabels],
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false },
+        datalabels: {
+          color: '#fff',
+          font: { size: isDash ? 10 : 9, weight: 'bold' },
+          anchor: 'center',
+          align: 'center',
+          formatter: v => v > 0 ? v : '',
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#999', maxRotation: 0 } },
+        y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 11 }, color: '#999' }, beginAtZero: true }
+      },
+      onClick: (evt, els) => { if (els.length) onClickBar(els[0].index); }
+    }
+  });
+
+  if (isDash) dashChart = chart; else histChart = chart;
+}
+
+// ─── Tab switching ────────────────────────────────
+function showTab(tab) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + tab).classList.add('active');
+  document.querySelector('.tab-btn[data-tab="' + tab + '"]').classList.add('active');
+  document.getElementById('fab').style.display = tab === 'dashboard' ? 'flex' : 'none';
+  if (tab === 'dashboard') renderDashboard();
+  if (tab === 'history')   renderHistory();
+}
+document.querySelectorAll('.tab-btn').forEach(btn =>
+  btn.addEventListener('click', () => showTab(btn.dataset.tab))
+);
+
+// ─── Period picker ────────────────────────────────
+document.querySelectorAll('.period-btn').forEach(btn =>
+  btn.addEventListener('click', () => {
+    state.period = parseInt(btn.dataset.period);
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderHistory();
+  })
+);
+
+// ─── Add protein modal ────────────────────────────
+function openAddModal() {
+  state.addAmount = 0;
+  document.getElementById('add-amount').textContent = '0';
+  document.getElementById('add-desc').value = '';
+  document.getElementById('add-btn').disabled = true;
+  document.getElementById('add-overlay').classList.add('open');
+}
+function adjustAmount(delta) {
+  state.addAmount = Math.max(0, state.addAmount + delta);
+  document.getElementById('add-amount').textContent = state.addAmount;
+  document.getElementById('add-btn').disabled = state.addAmount <= 0;
+}
+function quickAdd(n) {
+  state.addAmount += n;
+  document.getElementById('add-amount').textContent = state.addAmount;
+  document.getElementById('add-btn').disabled = false;
+}
+function addEntry() {
+  if (state.addAmount <= 0) return;
+  state.entries.push({
+    id: Date.now().toString(),
+    amount: state.addAmount,
+    description: document.getElementById('add-desc').value.trim(),
+    timestamp: new Date().toISOString(),
+  });
+  persist();
+  closeOverlay('add-overlay');
+  renderDashboard();
+}
+
+// ─── Day entries modal ────────────────────────────
+function openDayModal(date) {
+  selectedDate = date;
+  renderDayModal();
+  document.getElementById('day-overlay').classList.add('open');
+}
+function closeDayModal() {
+  closeOverlay('day-overlay');
+  const active = document.querySelector('.tab-btn.active').dataset.tab;
+  if (active === 'dashboard') renderDashboard();
+  if (active === 'history')   renderHistory();
+}
+function renderDayModal() {
+  const s = startOfDay(selectedDate).getTime(), e = s + 86400000;
+  const entries = state.entries
+    .filter(x => { const t = new Date(x.timestamp).getTime(); return t>=s && t<e; })
+    .sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+  const total = entries.reduce((a,x)=>a+x.amount,0);
+
+  document.getElementById('day-date-lbl').textContent =
+    selectedDate.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});
+  document.getElementById('day-total-lbl').textContent = 'Total: ' + total + 'g protein';
+
+  const list = document.getElementById('day-entries-list');
+  if (!entries.length) {
+    list.innerHTML = '<div class="empty-state">No entries for this day</div>';
+    return;
+  }
+  list.innerHTML = entries.map(en => `
+    <li class="entry-item">
+      <div>
+        <div class="entry-amount">${en.amount}g</div>
+        ${en.description ? `<div class="entry-desc">${en.description}</div>` : ''}
+      </div>
+      <div class="entry-right">
+        <div class="entry-time">${new Date(en.timestamp).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+        <button class="entry-del" onclick="deleteEntry('${en.id}')">Delete</button>
+      </div>
+    </li>
+  `).join('');
+}
+function deleteEntry(id) {
+  state.entries = state.entries.filter(e => e.id !== id);
+  persist();
+  renderDayModal();
+}
+
+// ─── Settings ─────────────────────────────────────
+function initSettings() {
+  document.getElementById('goal-input').value = state.goal;
+  syncPresets();
+}
+function syncPresets() {
+  document.querySelectorAll('.preset-btn').forEach(btn =>
+    btn.classList.toggle('active', parseInt(btn.dataset.val) === state.goal)
+  );
+}
+document.querySelectorAll('.preset-btn').forEach(btn =>
+  btn.addEventListener('click', () => {
+    state.goal = parseInt(btn.dataset.val);
+    document.getElementById('goal-input').value = state.goal;
+    localStorage.setItem('pt_goal', state.goal);
+    syncPresets();
+  })
+);
+document.getElementById('goal-input').addEventListener('input', () => {
+  const v = parseInt(document.getElementById('goal-input').value);
+  if (v > 0) { state.goal = v; syncPresets(); }
+});
+function saveGoal() {
+  const v = parseInt(document.getElementById('goal-input').value);
+  if (!v || v <= 0) return;
+  state.goal = v;
+  localStorage.setItem('pt_goal', v);
+  syncPresets();
+  const btn = document.getElementById('save-goal-btn');
+  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Saved!';
+  setTimeout(() => {
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Goal';
+  }, 1800);
+}
+
+// ─── Modal helpers ────────────────────────────────
+function closeOverlay(id) {
+  document.getElementById(id).classList.remove('open');
+}
+function overlayClose(e, id) {
+  if (e.target === e.currentTarget) closeOverlay(id);
+}
+// Day modal overlay needs special close to re-render
+document.getElementById('day-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('day-overlay')) closeDayModal();
+});
+
+// ─── Service worker ───────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// ─── Init ─────────────────────────────────────────
+initSettings();
+renderDashboard();
+</script>
+</body>
+</html>
