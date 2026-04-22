@@ -378,7 +378,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
     <div class="sheet-hdr">
       <div>
         <div class="sheet-title">Add Protein</div>
-        <div class="sheet-sub">Log your protein intake</div>
+        <div class="sheet-sub" id="add-modal-sub">Log your protein intake</div>
       </div>
       <button class="close-btn" onclick="closeOverlay('add-overlay')">
         <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -435,6 +435,10 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
       </button>
     </div>
     <ul class="entry-list" id="day-entries-list"></ul>
+    <button class="btn-primary" style="margin-top:16px" onclick="openAddModalForDate(selectedDate)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Entry for This Day
+    </button>
   </div>
 </div>
 
@@ -471,6 +475,7 @@ const state = {
 let dashChart = null;
 let histChart  = null;
 let selectedDate = null;
+let addTargetDate = null; // null = today, Date = past day
 
 // ─── Persistence ─────────────────────────────────
 function persist() {
@@ -517,9 +522,9 @@ function renderDashboard() {
   document.getElementById('stat-remaining').textContent = Math.max(0, state.goal - today) + 'g';
 
   // Chart
-  const labels = days7.map(d => d.date.toLocaleDateString('en-US',{weekday:'narrow'}));
+  const labels = days7.map(d => d.date.getDate().toString());
   const vals   = days7.map(d => d.total);
-  renderBarChart('dash-chart', labels, vals, 155, true, (i) => openDayModal(days7[i].date));
+  renderBarChart('dash-chart', labels, vals, 155, true, (i) => openDayModal(days7[i].date), state.goal);
 }
 
 // ─── History ──────────────────────────────────────
@@ -540,11 +545,11 @@ function renderHistory() {
 
   const labels = days.map(d => d.date.getDate().toString());
   const vals   = days.map(d => d.total);
-  renderBarChart('history-chart', labels, vals, 195, false, (i) => openDayModal(days[i].date));
+  renderBarChart('history-chart', labels, vals, 195, false, (i) => openDayModal(days[i].date), state.goal);
 }
 
 // ─── Shared bar chart renderer ────────────────────
-function renderBarChart(canvasId, labels, vals, height, isDash, onClickBar) {
+function renderBarChart(canvasId, labels, vals, height, isDash, onClickBar, goal) {
   const el = document.getElementById(canvasId);
   const existing = isDash ? dashChart : histChart;
   if (existing) existing.destroy();
@@ -553,12 +558,28 @@ function renderBarChart(canvasId, labels, vals, height, isDash, onClickBar) {
     type: 'bar',
     data: {
       labels,
-      datasets: [{
-        data: vals,
-        backgroundColor: '#E8834A',
-        borderRadius: 4,
-        borderSkipped: false,
-      }]
+      datasets: [
+        {
+          type: 'bar',
+          data: vals,
+          backgroundColor: '#E8834A',
+          borderRadius: 4,
+          borderSkipped: false,
+          order: 1,
+        },
+        {
+          type: 'line',
+          data: Array(labels.length).fill(goal),
+          borderColor: '#E8834A',
+          borderWidth: 2,
+          borderDash: [7, 5],
+          pointRadius: 0,
+          fill: false,
+          tension: 0,
+          order: 0,
+          datalabels: { display: false },
+        }
+      ]
     },
     plugins: [ChartDataLabels],
     options: {
@@ -577,9 +598,28 @@ function renderBarChart(canvasId, labels, vals, height, isDash, onClickBar) {
       },
       scales: {
         x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#999', maxRotation: 0 } },
-        y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 11 }, color: '#999' }, beginAtZero: true }
+        y: {
+          grid: { color: 'rgba(0,0,0,0.05)' },
+          ticks: { font: { size: 11 }, color: '#999' },
+          beginAtZero: true,
+          suggestedMax: Math.max(...vals, goal) * 1.15,
+        }
       },
-      onClick: (evt, els) => { if (els.length) onClickBar(els[0].index); }
+      onClick: (evt, els, chart) => {
+        if (els.length) {
+          onClickBar(els[0].index);
+        } else {
+          // tap on empty bar area — find closest x index
+          const xScale = chart.scales.x;
+          const x = evt.native.offsetX;
+          let closest = -1, minDist = Infinity;
+          for (let i = 0; i < labels.length; i++) {
+            const dist = Math.abs(xScale.getPixelForValue(i) - x);
+            if (dist < minDist) { minDist = dist; closest = i; }
+          }
+          if (closest >= 0 && minDist < 40) onClickBar(closest);
+        }
+      }
     }
   });
 
@@ -612,10 +652,23 @@ document.querySelectorAll('.period-btn').forEach(btn =>
 
 // ─── Add protein modal ────────────────────────────
 function openAddModal() {
+  addTargetDate = null;
+  document.getElementById('add-modal-sub').textContent = 'Log your protein intake';
   state.addAmount = 0;
   document.getElementById('add-amount').textContent = '0';
   document.getElementById('add-desc').value = '';
   document.getElementById('add-btn').disabled = true;
+  document.getElementById('add-overlay').classList.add('open');
+}
+function openAddModalForDate(date) {
+  addTargetDate = new Date(date);
+  const label = date.toLocaleDateString('en-US', {weekday:'long', month:'short', day:'numeric'});
+  document.getElementById('add-modal-sub').textContent = 'Logging for ' + label;
+  state.addAmount = 0;
+  document.getElementById('add-amount').textContent = '0';
+  document.getElementById('add-desc').value = '';
+  document.getElementById('add-btn').disabled = true;
+  document.getElementById('add-overlay').style.zIndex = '300';
   document.getElementById('add-overlay').classList.add('open');
 }
 function adjustAmount(delta) {
@@ -630,15 +683,29 @@ function quickAdd(n) {
 }
 function addEntry() {
   if (state.addAmount <= 0) return;
+  let ts;
+  if (addTargetDate) {
+    const d = new Date(addTargetDate);
+    d.setHours(12, 0, 0, 0); // noon on the target day
+    ts = d.toISOString();
+  } else {
+    ts = new Date().toISOString();
+  }
   state.entries.push({
     id: Date.now().toString(),
     amount: state.addAmount,
     description: document.getElementById('add-desc').value.trim(),
-    timestamp: new Date().toISOString(),
+    timestamp: ts,
   });
   persist();
+  document.getElementById('add-overlay').style.zIndex = '';
   closeOverlay('add-overlay');
-  renderDashboard();
+  if (addTargetDate) {
+    renderDayModal(); // refresh the day sheet still open underneath
+  } else {
+    renderDashboard();
+  }
+  addTargetDate = null;
 }
 
 // ─── Day entries modal ────────────────────────────
