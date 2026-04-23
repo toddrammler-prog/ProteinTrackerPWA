@@ -193,6 +193,13 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .entry-del{background:none;border:none;color:#ff453a;cursor:pointer;font-size:13px;padding:4px 6px;font-family:inherit}
 .empty-state{text-align:center;padding:40px 0;color:var(--muted)}
 
+/* ── Reminders ── */
+.reminder-note{font-size:13px;color:var(--text);background:var(--orange-light);border-radius:8px;padding:10px 12px;margin-bottom:14px;line-height:1.5}
+.reminder-steps{list-style:none;padding:0;margin-bottom:12px;display:flex;flex-direction:column;gap:12px}
+.reminder-steps li{display:flex;align-items:flex-start;gap:10px;font-size:13px;line-height:1.5;color:var(--text)}
+.step-num{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--orange);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.reminder-tip{font-size:12px;color:var(--muted);border-top:1px solid var(--border);padding-top:12px;line-height:1.5}
+
 /* ── Export ── */
 .export-row{display:flex;gap:10px;margin-bottom:10px}
 .export-field{flex:1;display:flex;flex-direction:column;gap:5px}
@@ -377,6 +384,54 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
       Save Goal
     </button>
+  </div>
+
+  <!-- Reminders card -->
+  <div class="settings-card" style="margin-top:12px">
+    <div class="settings-hdr">
+      <div class="settings-icon">
+        <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </div>
+      <div class="settings-hdr-text">
+        <h3>Daily Reminders</h3>
+        <p>Get a notification to log your protein</p>
+      </div>
+    </div>
+
+    <div class="reminder-note">
+      Reminders use the iPhone's built-in <strong>Shortcuts</strong> app — no account needed. Set it up once and iOS handles the rest.
+    </div>
+
+    <ol class="reminder-steps">
+      <li>
+        <span class="step-num">1</span>
+        <div>Open the <strong>Shortcuts</strong> app on your iPhone (built-in, search for it if needed)</div>
+      </li>
+      <li>
+        <span class="step-num">2</span>
+        <div>Tap <strong>Automation</strong> at the bottom → tap <strong>+</strong> in the top right</div>
+      </li>
+      <li>
+        <span class="step-num">3</span>
+        <div>Choose <strong>Time of Day</strong> → set your reminder time (e.g. 7:00 PM) → tap <strong>Next</strong></div>
+      </li>
+      <li>
+        <span class="step-num">4</span>
+        <div>Tap <strong>Add Action</strong> → search <strong>Show Notification</strong> → tap it → set the message to something like <em>"Don't forget to log your protein today!"</em></div>
+      </li>
+      <li>
+        <span class="step-num">5</span>
+        <div>Tap <strong>+</strong> below that action → search <strong>Open URLs</strong> → tap it → paste this app's URL into the URL field</div>
+      </li>
+      <li>
+        <span class="step-num">6</span>
+        <div>Tap <strong>Next</strong> → turn off <strong>"Ask Before Running"</strong> → tap <strong>Done</strong></div>
+      </li>
+    </ol>
+
+    <div class="reminder-tip">
+      Tapping the notification will open the app directly. To change the time or delete the reminder, go back to Shortcuts → Automation.
+    </div>
   </div>
 
   <!-- Export card -->
