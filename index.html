@@ -996,9 +996,10 @@ function initOneSignal() {
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
     await OneSignal.init({
-      appId: 'fc8e8aed-24e0-4db6-852c-6c33c7590f56',   // ← paste your App ID here
+      appId: 'fc8e8aed-24e0-4db6-852c-6c33c7590f56',
       notifyButton: { enable: false },
       serviceWorkerPath: 'OneSignalSDKWorker.js',
+      serviceWorkerParam: { scope: '/ProteinTrackerPWA/' },
     });
     const saved = localStorage.getItem('pt_reminder_time');
     if (saved) document.getElementById('reminder-time').value = saved;
