@@ -12,6 +12,7 @@
   <link rel="apple-touch-icon" href="icon.svg">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
@@ -386,7 +387,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
     </button>
   </div>
 
-  <!-- Reminders card -->
+  <!-- Notifications card -->
   <div class="settings-card" style="margin-top:12px">
     <div class="settings-hdr">
       <div class="settings-icon">
@@ -394,43 +395,23 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
       </div>
       <div class="settings-hdr-text">
         <h3>Daily Reminders</h3>
-        <p>Get a notification to log your protein</p>
+        <p>Get notified to log your protein each day</p>
       </div>
     </div>
 
-    <div class="reminder-note">
-      Reminders use the iPhone's built-in <strong>Shortcuts</strong> app — no account needed. Set it up once and iOS handles the rest.
-    </div>
+    <div id="notif-status" style="font-size:13px;color:var(--muted);margin-bottom:14px">Checking…</div>
 
-    <ol class="reminder-steps">
-      <li>
-        <span class="step-num">1</span>
-        <div>Open the <strong>Shortcuts</strong> app on your iPhone (built-in, search for it if needed)</div>
-      </li>
-      <li>
-        <span class="step-num">2</span>
-        <div>Tap <strong>Automation</strong> at the bottom → tap <strong>+</strong> in the top right</div>
-      </li>
-      <li>
-        <span class="step-num">3</span>
-        <div>Choose <strong>Time of Day</strong> → set your reminder time (e.g. 7:00 PM) → tap <strong>Next</strong></div>
-      </li>
-      <li>
-        <span class="step-num">4</span>
-        <div>Tap <strong>Add Action</strong> → search <strong>Show Notification</strong> → tap it → set the message to something like <em>"Don't forget to log your protein today!"</em></div>
-      </li>
-      <li>
-        <span class="step-num">5</span>
-        <div>Tap <strong>+</strong> below that action → search <strong>Open URLs</strong> → tap it → paste this app's URL into the URL field</div>
-      </li>
-      <li>
-        <span class="step-num">6</span>
-        <div>Tap <strong>Next</strong> → turn off <strong>"Ask Before Running"</strong> → tap <strong>Done</strong></div>
-      </li>
-    </ol>
+    <button class="btn-primary" id="notif-btn" onclick="toggleNotifications()" style="display:none">
+      Enable Notifications
+    </button>
 
-    <div class="reminder-tip">
-      Tapping the notification will open the app directly. To change the time or delete the reminder, go back to Shortcuts → Automation.
+    <div id="notif-time-section" style="display:none;margin-top:16px">
+      <label class="export-lbl" style="display:block;margin-bottom:6px">Reminder Time</label>
+      <div style="display:flex;gap:10px;align-items:center">
+        <input type="time" class="date-input" id="reminder-time" value="19:00" style="flex:1">
+        <button class="btn-primary" style="flex:0 0 auto;padding:10px 16px;font-size:14px" onclick="saveReminderTime()">Save</button>
+      </div>
+      <div id="reminder-saved-msg" style="font-size:12px;color:var(--orange);margin-top:6px;min-height:16px"></div>
     </div>
   </div>
 
@@ -954,14 +935,90 @@ function exportCSV() {
   URL.revokeObjectURL(url);
 }
 
-// ─── Service worker ───────────────────────────────
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+// ─── OneSignal notifications ──────────────────────
+function waitForOneSignal() {
+  return new Promise(resolve => {
+    let tries = 0;
+    const check = setInterval(() => {
+      if (window.OneSignal && window.OneSignal.User) {
+        clearInterval(check); resolve(window.OneSignal);
+      } else if (++tries > 60) { clearInterval(check); resolve(null); }
+    }, 150);
+  });
 }
+
+function initOneSignal() {
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: 'fc8e8aed-24e0-4db6-852c-6c33c7590f56',   // ← paste your App ID here
+      notifyButton: { enable: false },
+      serviceWorkerPath: 'OneSignalSDKWorker.js',
+    });
+    const saved = localStorage.getItem('pt_reminder_time');
+    if (saved) document.getElementById('reminder-time').value = saved;
+    await updateNotifUI();
+    OneSignal.User.PushSubscription.addEventListener('change', updateNotifUI);
+  });
+}
+
+async function updateNotifUI() {
+  const OS = await waitForOneSignal();
+  const statusEl = document.getElementById('notif-status');
+  const btnEl    = document.getElementById('notif-btn');
+  const timeEl   = document.getElementById('notif-time-section');
+
+  if (!OS) {
+    statusEl.textContent = 'Push notifications are not supported on this device/browser.';
+    btnEl.style.display  = 'none';
+    return;
+  }
+
+  btnEl.style.display = 'flex';
+  const on = OS.User.PushSubscription.optedIn;
+  if (on) {
+    statusEl.innerHTML  = '<span style="color:var(--orange)">✓ Notifications enabled</span>';
+    btnEl.textContent   = 'Disable Notifications';
+    btnEl.style.background = 'rgba(0,0,0,0.15)';
+    timeEl.style.display   = 'block';
+  } else {
+    statusEl.textContent   = 'Enable notifications to receive a daily reminder.';
+    btnEl.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> Enable Notifications';
+    btnEl.style.background = '';
+    timeEl.style.display   = 'none';
+  }
+}
+
+async function toggleNotifications() {
+  const OS = await waitForOneSignal();
+  if (!OS) return;
+  const on = OS.User.PushSubscription.optedIn;
+  if (on) { await OS.User.PushSubscription.optOut(); }
+  else    { await OS.User.PushSubscription.optIn();  }
+  await updateNotifUI();
+}
+
+async function saveReminderTime() {
+  const time = document.getElementById('reminder-time').value;
+  if (!time) return;
+  const [h] = time.split(':').map(Number);
+  const d   = new Date(); d.setHours(h, 0, 0, 0);
+  const utcHour = d.getUTCHours();
+  localStorage.setItem('pt_reminder_time', time);
+  const OS = await waitForOneSignal();
+  if (OS) await OS.User.addTag('reminder_hour_utc', String(utcHour));
+  const msg = document.getElementById('reminder-saved-msg');
+  msg.textContent = '✓ Reminder time saved';
+  setTimeout(() => { msg.textContent = ''; }, 2000);
+}
+
+// ─── Service worker ───────────────────────────────
+// OneSignal registers OneSignalSDKWorker.js automatically — no manual registration needed.
 
 // ─── Init ─────────────────────────────────────────
 initSettings();
 initExport();
+initOneSignal();
 renderDashboard();
 </script>
 </body>
