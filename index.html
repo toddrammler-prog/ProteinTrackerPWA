@@ -409,6 +409,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
     </div>
 
     <div id="notif-status" style="font-size:13px;color:var(--muted);margin-bottom:14px">Checking…</div>
+    <div id="notif-debug" style="font-size:11px;color:var(--muted);margin-bottom:10px;word-break:break-all;font-family:monospace"></div>
 
     <button class="btn-primary" id="notif-btn" onclick="toggleNotifications()" style="display:none">
       Enable Notifications
@@ -1021,7 +1022,11 @@ async function updateNotifUI() {
   }
 
   btnEl.style.display = 'flex';
-  const on = OS.User.PushSubscription.optedIn;
+  const sub = OS.User.PushSubscription;
+  const on  = sub.optedIn;
+  const sid = sub.id || sub.token || '(none)';
+  const debugEl = document.getElementById('notif-debug');
+  if (debugEl) debugEl.textContent = 'optedIn:' + on + ' | id:' + sid;
   if (on) {
     statusEl.innerHTML  = '<span style="color:var(--orange)">✓ Notifications enabled</span>';
     btnEl.textContent   = 'Disable Notifications';
