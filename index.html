@@ -1091,10 +1091,13 @@ async function testPushDirect() {
   try {
     const OS = window.OneSignal;
     const sub = OS && OS.User && OS.User.PushSubscription;
-    const subMethods = sub ? Object.getOwnPropertyNames(Object.getPrototypeOf(sub)).join(',') : 'no sub';
-    const notif = OS && OS.Notifications;
-    const notifMethods = notif ? Object.getOwnPropertyNames(Object.getPrototypeOf(notif)).join(',') : 'no Notif ns';
-    el.textContent = 'sub methods:' + subMethods.slice(0,150) + ' | Notifications:' + notifMethods.slice(0,100);
+    // List own + prototype properties on PushSubscription
+    const ownKeys = sub ? Object.keys(sub).join(',') : 'no sub';
+    const protoKeys = sub ? Object.getOwnPropertyNames(Object.getPrototypeOf(sub)).join(',') : '';
+    // Try to directly create push subscription
+    const reg = await navigator.serviceWorker.ready;
+    const existing = await reg.pushManager.getSubscription();
+    el.textContent = 'sub.own:' + ownKeys + ' | sub.proto:' + protoKeys.slice(0,150) + ' | existing-push:' + !!existing;
   } catch(e) {
     el.textContent = 'ERR: ' + (e.message || String(e));
   }
