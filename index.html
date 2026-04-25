@@ -1049,8 +1049,17 @@ async function toggleNotifications() {
   const OS = await waitForOneSignal();
   if (!OS) return;
   const on = OS.User.PushSubscription.optedIn;
-  if (on) { await OS.User.PushSubscription.optOut(); }
-  else    { await OS.User.PushSubscription.optIn();  }
+  const debugEl = document.getElementById('notif-debug');
+  if (on) {
+    await OS.User.PushSubscription.optOut();
+  } else {
+    try {
+      await OS.User.PushSubscription.optIn();
+      if (debugEl) debugEl.textContent += ' optIn OK';
+    } catch(e) {
+      if (debugEl) debugEl.textContent += ' ERR:' + (e && (e.message || String(e)));
+    }
+  }
   await updateNotifUI();
 }
 
