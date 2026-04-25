@@ -1,18 +1,11 @@
 name: Send Daily Protein Reminders
-
-"on":
+on:
+  workflow_dispatch:
   schedule:
     - cron: '0 * * * *'
-  workflow_dispatch:
-
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Send ntfy notification
-        run: |
-          HOUR=$(date -u +%-H)
-          curl -s \
-            -H "Title: Protein Tracker" \
-            -d "Don't forget to log your protein today! 💪" \
-            "https://ntfy.sh/${{ secrets.NTFY_TOPIC }}-h${HOUR}"
+      - name: Notify
+        run: curl -s -H "Title: Protein Tracker" -d "Log your protein today!" "https://ntfy.sh/${{ secrets.NTFY_TOPIC }}-h$(date -u +%-H)"
