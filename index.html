@@ -1086,14 +1086,16 @@ async function testPushDirect() {
   try {
     const reg = await navigator.serviceWorker.ready;
     const swState = reg.active ? reg.active.state : 'no-active';
-    const existing = await reg.pushManager.getSubscription();
-    if (existing) {
-      el.textContent = 'sw:' + swState + ' existing-sub:' + existing.endpoint.slice(0,60);
-    } else {
-      el.textContent = 'sw:' + swState + ' no-existing-sub pushManager:' + !!reg.pushManager;
-    }
+
+    // Check OneSignal internal config for VAPID key
+    const OS = window.OneSignal;
+    const ctx = OS && (OS.context || OS.Context || OS._context);
+    const cfg = ctx && (ctx.appConfig || ctx.config);
+    const vapid = cfg && (cfg.vapidPublicKey || cfg.onesignalVapidPublicKey || cfg.safariWebId || JSON.stringify(Object.keys(cfg)).slice(0,80));
+
+    el.textContent = 'sw:' + swState + ' | OS.initialized:' + (OS && !!OS.initialized) + ' | vapid/cfg:' + (vapid || 'not found') + ' | ctxKeys:' + (ctx ? Object.keys(ctx).join(',') : 'no ctx');
   } catch(e) {
-    el.textContent = 'direct ERR: ' + (e.message || String(e));
+    el.textContent = 'ERR: ' + (e.message || String(e));
   }
 }
 
