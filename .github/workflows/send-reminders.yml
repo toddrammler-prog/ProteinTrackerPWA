@@ -8,4 +8,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Notify
-        run: curl -s -H "Title: Protein Tracker" -d "Log your protein today!" "https://ntfy.sh/${{ secrets.NTFY_TOPIC }}-h$(date -u +%-H)"
+        run: |
+          curl -s -H "Title: Protein Tracker" -d "Log your protein today!" "https://ntfy.sh/${{ secrets.NTFY_TOPIC }}-h$(date -u +%-H)"
