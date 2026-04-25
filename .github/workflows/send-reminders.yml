@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Notify
-        env:
+        env
           TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: |
           curl -d "Log your protein today!" "https://ntfy.sh/${TOPIC}-h$(date -u +%-H)"
