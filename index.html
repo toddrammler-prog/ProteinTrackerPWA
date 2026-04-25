@@ -409,7 +409,8 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
     </div>
 
     <div id="notif-status" style="font-size:13px;color:var(--muted);margin-bottom:14px">Checking…</div>
-    <div id="notif-debug" style="font-size:11px;color:var(--muted);margin-bottom:10px;word-break:break-all;font-family:monospace"></div>
+    <div id="notif-debug" style="font-size:11px;color:var(--muted);margin-bottom:4px;word-break:break-all;font-family:monospace"></div>
+    <div id="notif-error" style="font-size:11px;color:red;margin-bottom:10px;word-break:break-all;font-family:monospace"></div>
 
     <button class="btn-primary" id="notif-btn" onclick="toggleNotifications()" style="display:none">
       Enable Notifications
@@ -1053,11 +1054,12 @@ async function toggleNotifications() {
   if (on) {
     await OS.User.PushSubscription.optOut();
   } else {
+    const errEl = document.getElementById('notif-error');
     try {
       await OS.User.PushSubscription.optIn();
-      if (debugEl) debugEl.textContent += ' optIn OK';
+      if (errEl) errEl.textContent = 'optIn() completed. perm:' + Notification.permission;
     } catch(e) {
-      if (debugEl) debugEl.textContent += ' ERR:' + (e && (e.message || String(e)));
+      if (errEl) errEl.textContent = 'ERR: ' + (e && (e.message || String(e)));
     }
   }
   await updateNotifUI();
