@@ -1,6 +1,6 @@
 name: Send Daily Protein Reminders
 
-on:
+"on":
   schedule:
     - cron: '0 * * * *'   # runs every hour on the hour (UTC)
   workflow_dispatch:       # allows manual trigger from GitHub Actions tab
