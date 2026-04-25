@@ -1002,11 +1002,18 @@ function initOneSignal() {
   }
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
-    await OneSignal.init({
-      appId: 'fc8e8aed-24e0-4db6-852c-6c33c7590f56',
-      notifyButton: { enable: false },
-      serviceWorkerPath: 'OneSignalSDKWorker.js',
-    });
+    const errEl = document.getElementById('notif-error');
+    try {
+      await OneSignal.init({
+        appId: 'fc8e8aed-24e0-4db6-852c-6c33c7590f56',
+        notifyButton: { enable: false },
+        serviceWorkerPath: 'OneSignalSDKWorker.js',
+      });
+      if (errEl) errEl.textContent = 'init OK. OS keys:' + Object.keys(OneSignal).join(',').slice(0,120);
+    } catch(e) {
+      if (errEl) errEl.textContent = 'init ERR: ' + (e && (e.message || String(e)));
+      return;
+    }
     const saved = localStorage.getItem('pt_reminder_time');
     if (saved) document.getElementById('reminder-time').value = saved;
     await updateNotifUI();
