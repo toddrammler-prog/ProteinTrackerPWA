@@ -1091,19 +1091,20 @@ async function saveReminderTime() {
   setTimeout(() => { msg.textContent = ''; }, 2000);
 }
 
+function b64ToUint8(b) {
+  const p = '='.repeat((4 - b.length % 4) % 4);
+  const s = atob((b + p).replace(/-/g,'+').replace(/_/g,'/'));
+  return new Uint8Array([...s].map(c => c.charCodeAt(0)));
+}
 async function testPushDirect() {
   const el = document.getElementById('notif-push-test');
   try {
-    const reg = await navigator.serviceWorker.ready;
-    const swState = reg.active ? reg.active.state : 'no-active';
-
-    // Check OneSignal internal config for VAPID key
     const OS = window.OneSignal;
-    const ctx = OS && (OS.context || OS.Context || OS._context);
-    const cfg = ctx && (ctx.appConfig || ctx.config);
-    const vapid = cfg && (cfg.vapidPublicKey || cfg.onesignalVapidPublicKey || cfg.safariWebId || JSON.stringify(Object.keys(cfg)).slice(0,80));
-
-    el.textContent = 'sw:' + swState + ' | OS.initialized:' + (OS && !!OS.initialized) + ' | vapid/cfg:' + (vapid || 'not found') + ' | ctxKeys:' + (ctx ? Object.keys(ctx).join(',') : 'no ctx');
+    const sub = OS && OS.User && OS.User.PushSubscription;
+    const subMethods = sub ? Object.getOwnPropertyNames(Object.getPrototypeOf(sub)).join(',') : 'no sub';
+    const notif = OS && OS.Notifications;
+    const notifMethods = notif ? Object.getOwnPropertyNames(Object.getPrototypeOf(notif)).join(',') : 'no Notif ns';
+    el.textContent = 'sub methods:' + subMethods.slice(0,150) + ' | Notifications:' + notifMethods.slice(0,100);
   } catch(e) {
     el.textContent = 'ERR: ' + (e.message || String(e));
   }
