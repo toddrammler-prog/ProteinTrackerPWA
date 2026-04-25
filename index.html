@@ -419,19 +419,23 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
     </div>
 
     <div style="background:var(--orange-light);border-radius:10px;padding:12px;margin-bottom:12px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Your notification topic</div>
-      <div id="ntfy-topic-display" style="font-size:13px;font-weight:600;word-break:break-all;margin-bottom:8px"></div>
-      <a id="ntfy-subscribe-link" href="#" target="_blank" class="btn-primary" style="display:block;text-align:center;text-decoration:none;padding:10px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:2px">Subscribe to this in the ntfy app</div>
+      <div id="ntfy-topic-display" style="font-size:13px;font-weight:600;word-break:break-all;margin-bottom:10px"></div>
+      <a id="ntfy-subscribe-link" href="#" target="_blank" class="btn-primary" style="display:block;text-align:center;text-decoration:none;padding:10px;margin-bottom:12px">
         Subscribe in ntfy app →
       </a>
+      <div style="border-top:1px solid rgba(0,0,0,0.08);padding-top:10px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:2px">GitHub Secret — NTFY_TOPIC value</div>
+        <div id="ntfy-base-display" style="font-size:13px;font-weight:600;word-break:break-all;font-family:monospace"></div>
+      </div>
     </div>
 
     <details style="font-size:12px;color:var(--muted)">
       <summary style="cursor:pointer;margin-bottom:8px;font-weight:500">GitHub Actions setup (one-time)</summary>
       <ol style="padding-left:18px;line-height:2">
-        <li>Copy your topic name above</li>
+        <li>Copy the <strong>GitHub Secret</strong> value above</li>
         <li>Go to your GitHub repo → Settings → Secrets and variables → Actions</li>
-        <li>Add a secret named <code style="background:#eee;padding:1px 4px;border-radius:3px">NTFY_TOPIC</code> with your topic as the value</li>
+        <li>Add a secret named <code style="background:#eee;padding:1px 4px;border-radius:3px">NTFY_TOPIC</code> and paste the value</li>
       </ol>
     </details>
   </div>
@@ -1013,9 +1017,11 @@ function initNotifications() {
 }
 
 function updateNtfyUI() {
-  const topic = getNtfyTopic();
+  const baseId = localStorage.getItem('pt_ntfy_id');
+  const topic  = getNtfyTopic();
   document.getElementById('ntfy-topic-display').textContent = 'ntfy.sh/' + topic;
   document.getElementById('ntfy-subscribe-link').href = 'https://ntfy.sh/' + topic;
+  document.getElementById('ntfy-base-display').textContent = baseId;
 }
 
 function saveReminderTime() {
