@@ -1,7 +1,4 @@
-importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
-
-// Offline caching
-const CACHE = 'protein-tracker-v10';
+const CACHE = 'protein-tracker-v12';
 const ASSETS = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {

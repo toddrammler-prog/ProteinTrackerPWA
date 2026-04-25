@@ -9,23 +9,12 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Send notifications to users whose reminder time matches now
+      - name: Send ntfy notification to users whose reminder hour matches now
         run: |
           HOUR=$(date -u +%-H)
-          echo "Sending to users with reminder_hour_utc = $HOUR"
+          echo "Sending to topic: ${{ secrets.NTFY_TOPIC }}-h${HOUR}"
 
-          curl -s -o response.json -w "%{http_code}" -X POST \
-            "https://onesignal.com/api/v1/notifications" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Basic ${{ secrets.ONESIGNAL_REST_API_KEY }}" \
-            -d "{
-              \"app_id\": \"${{ secrets.ONESIGNAL_APP_ID }}\",
-              \"filters\": [
-                {\"field\": \"tag\", \"key\": \"reminder_hour_utc\", \"relation\": \"=\", \"value\": \"$HOUR\"}
-              ],
-              \"headings\": {\"en\": \"Protein Tracker\"},
-              \"contents\": {\"en\": \"Don't forget to log your protein today! 💪\"},
-              \"url\": \"https://toddrammler-prog.github.io/ProteinTrackerPWA/\"
-            }"
-
-          cat response.json
+          curl -s \
+            -H "Title: Protein Tracker" \
+            -d "Don't forget to log your protein today! 💪" \
+            "https://ntfy.sh/${{ secrets.NTFY_TOPIC }}-h${HOUR}"
