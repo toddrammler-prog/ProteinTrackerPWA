@@ -1,7 +1,11 @@
-name: Test
-on: workflow_dispatch
+name: Send Daily Protein Reminders
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 * * * *'
 jobs:
-  test:
+  notify:
     runs-on: ubuntu-latest
     steps:
-      - run: echo hello
+      - name: Notify
+        run: curl -d "Log your protein today!" https://ntfy.sh/pt-53v5g6mt-h$(date -u +%-H)
