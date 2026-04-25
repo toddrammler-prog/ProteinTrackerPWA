@@ -396,50 +396,6 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
   </div>
 
   <!-- Notifications card -->
-  <div class="settings-card" style="margin-top:12px">
-    <div class="settings-hdr">
-      <div class="settings-icon">
-        <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-      </div>
-      <div class="settings-hdr-text">
-        <h3>Daily Reminders</h3>
-        <p>Get notified to log your protein each day</p>
-      </div>
-    </div>
-
-    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Uses the free <strong>ntfy</strong> app (App Store). Pick a time, tap Subscribe, done.</p>
-
-    <div style="margin-bottom:14px">
-      <label class="export-lbl" style="display:block;margin-bottom:6px">Reminder Time</label>
-      <div style="display:flex;gap:10px;align-items:center">
-        <input type="time" class="date-input" id="reminder-time" value="19:00" style="flex:1">
-        <button class="btn-primary" style="flex:0 0 auto;padding:10px 16px;font-size:14px" onclick="saveReminderTime()">Save</button>
-      </div>
-      <div id="reminder-saved-msg" style="font-size:12px;color:var(--orange);margin-top:6px;min-height:16px"></div>
-    </div>
-
-    <div style="background:var(--orange-light);border-radius:10px;padding:12px;margin-bottom:12px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:2px">Subscribe to this in the ntfy app</div>
-      <div id="ntfy-topic-display" style="font-size:13px;font-weight:600;word-break:break-all;margin-bottom:10px"></div>
-      <a id="ntfy-subscribe-link" href="#" target="_blank" class="btn-primary" style="display:block;text-align:center;text-decoration:none;padding:10px;margin-bottom:12px">
-        Subscribe in ntfy app →
-      </a>
-      <div style="border-top:1px solid rgba(0,0,0,0.08);padding-top:10px">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:2px">GitHub Secret — NTFY_TOPIC value</div>
-        <div id="ntfy-base-display" style="font-size:13px;font-weight:600;word-break:break-all;font-family:monospace"></div>
-      </div>
-    </div>
-
-    <details style="font-size:12px;color:var(--muted)">
-      <summary style="cursor:pointer;margin-bottom:8px;font-weight:500">GitHub Actions setup (one-time)</summary>
-      <ol style="padding-left:18px;line-height:2">
-        <li>Copy the <strong>GitHub Secret</strong> value above</li>
-        <li>Go to your GitHub repo → Settings → Secrets and variables → Actions</li>
-        <li>Add a secret named <code style="background:#eee;padding:1px 4px;border-radius:3px">NTFY_TOPIC</code> and paste the value</li>
-      </ol>
-    </details>
-  </div>
-
   <!-- Export card -->
   <div class="settings-card" style="margin-top:12px">
     <div class="settings-hdr">
@@ -996,43 +952,6 @@ function importCSV(event) {
   reader.readAsText(file);
 }
 
-// ─── ntfy notifications ───────────────────────────
-function getNtfyTopic() {
-  let id = localStorage.getItem('pt_ntfy_id');
-  if (!id) {
-    id = 'pt-' + Math.random().toString(36).slice(2, 10);
-    localStorage.setItem('pt_ntfy_id', id);
-  }
-  const saved = localStorage.getItem('pt_reminder_time') || '19:00';
-  const [h] = saved.split(':').map(Number);
-  const d = new Date(); d.setHours(h, 0, 0, 0);
-  const utcHour = d.getUTCHours();
-  return id + '-h' + utcHour;
-}
-
-function initNotifications() {
-  const saved = localStorage.getItem('pt_reminder_time');
-  if (saved) document.getElementById('reminder-time').value = saved;
-  updateNtfyUI();
-}
-
-function updateNtfyUI() {
-  const baseId = localStorage.getItem('pt_ntfy_id');
-  const topic  = getNtfyTopic();
-  document.getElementById('ntfy-topic-display').textContent = 'ntfy.sh/' + topic;
-  document.getElementById('ntfy-subscribe-link').href = 'https://ntfy.sh/' + topic;
-  document.getElementById('ntfy-base-display').textContent = baseId;
-}
-
-function saveReminderTime() {
-  const time = document.getElementById('reminder-time').value;
-  if (!time) return;
-  localStorage.setItem('pt_reminder_time', time);
-  updateNtfyUI();
-  const msg = document.getElementById('reminder-saved-msg');
-  msg.textContent = '✓ Saved — resubscribe in ntfy if you changed the time';
-  setTimeout(() => { msg.textContent = ''; }, 3000);
-}
 
 // ─── Service worker ───────────────────────────────
 // OneSignal registers OneSignalSDKWorker.js automatically — no manual registration needed.
@@ -1040,7 +959,6 @@ function saveReminderTime() {
 // ─── Init ─────────────────────────────────────────
 initSettings();
 initExport();
-initNotifications();
 renderDashboard();
 </script>
 </body>
