@@ -1,1 +1,21 @@
+name: Send Daily Protein Reminders
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # runs every hour on the hour (UTC)
+  workflow_dispatch:       # allows manual trigger from GitHub Actions tab
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send ntfy notification to users whose reminder hour matches now
+        run: |
+          HOUR=$(date -u +%-H)
+          echo "Sending to topic: ${{ secrets.NTFY_TOPIC }}-h${HOUR}"
+
+          curl -s \
+            -H "Title: Protein Tracker" \
+            -d "Don't forget to log your protein today! 💪" \
+            "https://ntfy.sh/${{ secrets.NTFY_TOPIC }}-h${HOUR}"
 
