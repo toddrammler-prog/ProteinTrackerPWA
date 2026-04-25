@@ -8,4 +8,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Notify
-        run: curl -d "Log your protein today!" https://ntfy.sh/pt-53v5g6mt-h$(date -u +%-H)
+          run: curl -d "Log your protein today!" https://ntfy.sh/pt-53v5g6mt-h21
