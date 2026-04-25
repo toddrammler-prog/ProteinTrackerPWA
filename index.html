@@ -1066,7 +1066,10 @@ async function toggleNotifications() {
     const errEl = document.getElementById('notif-error');
     try {
       await OS.User.PushSubscription.optIn();
-      if (errEl) errEl.textContent = 'optIn() completed. perm:' + Notification.permission;
+      if (errEl) errEl.textContent = 'optIn() done — waiting 5s...';
+      await new Promise(r => setTimeout(r, 5000));
+      const sub = OS.User.PushSubscription;
+      if (errEl) errEl.textContent = 'after 5s: optedIn:' + sub.optedIn + ' id:' + (sub.id || 'none') + ' token:' + (sub.token ? sub.token.slice(0,40) : 'none');
     } catch(e) {
       if (errEl) errEl.textContent = 'ERR: ' + (e && (e.message || String(e)));
     }
