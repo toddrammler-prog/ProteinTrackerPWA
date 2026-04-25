@@ -1027,24 +1027,17 @@ async function updateNotifUI() {
   const btnEl    = document.getElementById('notif-btn');
   const timeEl   = document.getElementById('notif-time-section');
 
-  if (!OS) {
+  if (!OS || !OS.Notifications || !OS.Notifications.isPushSupported()) {
     statusEl.textContent = 'Push notifications are not supported on this device/browser.';
     btnEl.style.display  = 'none';
     return;
   }
 
   btnEl.style.display = 'flex';
-  const sub = OS.User.PushSubscription;
-  const on  = sub.optedIn;
-  const sid = sub.id || sub.token || '(none)';
-  const debugEl = document.getElementById('notif-debug');
-  const regs = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistrations() : [];
-  const swInfo = regs.map(r => r.scope.replace(location.origin,'')).join(', ') || 'none';
-  const perm = ('Notification' in window) ? Notification.permission : 'N/A';
-  if (debugEl) debugEl.textContent = 'optedIn:' + on + ' | id:' + sid + ' | perm:' + perm + ' | sw:' + regs.length + '(' + swInfo + ')';
+  const on = OS.Notifications.permission;
   if (on) {
-    statusEl.innerHTML  = '<span style="color:var(--orange)">✓ Notifications enabled</span>';
-    btnEl.textContent   = 'Disable Notifications';
+    statusEl.innerHTML     = '<span style="color:var(--orange)">✓ Notifications enabled</span>';
+    btnEl.textContent      = 'Disable Notifications';
     btnEl.style.background = 'rgba(0,0,0,0.15)';
     timeEl.style.display   = 'block';
   } else {
@@ -1058,18 +1051,15 @@ async function updateNotifUI() {
 async function toggleNotifications() {
   const OS = await waitForOneSignal();
   if (!OS) return;
-  const on = OS.User.PushSubscription.optedIn;
-  const debugEl = document.getElementById('notif-debug');
+  const errEl = document.getElementById('notif-error');
+  const on = OS.Notifications.permission;
   if (on) {
-    await OS.User.PushSubscription.optOut();
+    if (OS.User && OS.User.PushSubscription && OS.User.PushSubscription.optOut)
+      await OS.User.PushSubscription.optOut();
   } else {
-    const errEl = document.getElementById('notif-error');
     try {
-      await OS.User.PushSubscription.optIn();
-      if (errEl) errEl.textContent = 'optIn() done — waiting 5s...';
-      await new Promise(r => setTimeout(r, 5000));
-      const sub = OS.User.PushSubscription;
-      if (errEl) errEl.textContent = 'after 5s: optedIn:' + sub.optedIn + ' id:' + (sub.id || 'none') + ' token:' + (sub.token ? sub.token.slice(0,40) : 'none');
+      await OS.Notifications.requestPermission();
+      if (errEl) errEl.textContent = '';
     } catch(e) {
       if (errEl) errEl.textContent = 'ERR: ' + (e && (e.message || String(e)));
     }
