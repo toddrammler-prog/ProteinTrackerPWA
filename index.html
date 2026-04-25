@@ -410,7 +410,9 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 
     <div id="notif-status" style="font-size:13px;color:var(--muted);margin-bottom:14px">Checking…</div>
     <div id="notif-debug" style="font-size:11px;color:var(--muted);margin-bottom:4px;word-break:break-all;font-family:monospace"></div>
-    <div id="notif-error" style="font-size:11px;color:red;margin-bottom:10px;word-break:break-all;font-family:monospace"></div>
+    <div id="notif-error" style="font-size:11px;color:red;margin-bottom:4px;word-break:break-all;font-family:monospace"></div>
+    <button onclick="testPushDirect()" style="font-size:11px;background:none;border:1px solid #ccc;border-radius:6px;padding:4px 8px;margin-bottom:10px;cursor:pointer">Test Push Directly</button>
+    <div id="notif-push-test" style="font-size:11px;color:purple;margin-bottom:10px;word-break:break-all;font-family:monospace"></div>
 
     <button class="btn-primary" id="notif-btn" onclick="toggleNotifications()" style="display:none">
       Enable Notifications
@@ -1077,6 +1079,22 @@ async function saveReminderTime() {
   const msg = document.getElementById('reminder-saved-msg');
   msg.textContent = '✓ Reminder time saved';
   setTimeout(() => { msg.textContent = ''; }, 2000);
+}
+
+async function testPushDirect() {
+  const el = document.getElementById('notif-push-test');
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const swState = reg.active ? reg.active.state : 'no-active';
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) {
+      el.textContent = 'sw:' + swState + ' existing-sub:' + existing.endpoint.slice(0,60);
+    } else {
+      el.textContent = 'sw:' + swState + ' no-existing-sub pushManager:' + !!reg.pushManager;
+    }
+  } catch(e) {
+    el.textContent = 'direct ERR: ' + (e.message || String(e));
+  }
 }
 
 // ─── Service worker ───────────────────────────────
